@@ -1,4 +1,6 @@
+import { getUserSessionServer } from '@/auth/actions/auth-actions'
 import prisma from '@/lib/prisma'
+import { get } from 'http'
 import { NextResponse, NextRequest } from 'next/server'
 
 import * as yup  from 'yup'
@@ -31,13 +33,21 @@ const postSchema = yup.object({
 })
 
 
-export async function POST(request: Request) { 
+export async function POST(request: Request) {
+    
+    const users= await getUserSessionServer()
+    
+    
+
+    if(!users || !users.user?.id) {
+        return NextResponse.json({message: 'You must be authenticated'}, {status:401})
+    }
 
     try {
         // el body tiene la data
         const {description, complete} =  await postSchema.validate( await request.json());
         // insertamos a la base de datos
-        const todo = await prisma.todo.create({data:{description, complete}})
+        const todo = await prisma.todo.create({data:{description, complete, userId:users.user?.id}})
         return NextResponse.json(todo)
         
     } catch (error) {
@@ -46,9 +56,16 @@ export async function POST(request: Request) {
 
 }
 export async function DELETE(request: Request) { 
+    const users= await getUserSessionServer()
+    
+    
+
+    if(!users || !users.user?.id) {
+        return NextResponse.json({message: 'You must be authenticated'}, {status:401})
+    }
 
     try {
-        await prisma.todo.deleteMany({where:{complete:true}})
+        await prisma.todo.deleteMany({where:{complete:true, userId:users.user?.id}})
         return NextResponse.json({message: "Todos deleted"})
         
     } catch (error) {
